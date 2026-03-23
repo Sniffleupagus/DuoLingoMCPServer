@@ -18,3 +18,7 @@ enforcement:
 server:
   host: "0.0.0.0"
   port: 8000
+  # Clients must send "Authorization: Bearer <api_key>" to connect.
+  # Generate one with: python3 -c "import secrets; print(secrets.token_urlsafe(32))"
+  # Leave blank or omit to disable auth (local dev only).
+  api_key: ""
