@@ -1,0 +1,20 @@
+# DuoLingo MCP Server Configuration
+# -----------------------------------
+# Copy this to config.yaml and fill in your values.
+# Get your JWT token from browser cookies at duolingo.com
+# (Application tab → Cookies → jwt_token)
+
+duolingo:
+  jwt_token: "PASTE_YOUR_JWT_HERE"
+  username: "PASTE_YOUR_USERNAME_HERE"
+
+enforcement:
+  # Time window when enforcement kicks in (24h format)
+  start_hour: 20  # 8 PM
+  end_hour: 23    # 11 PM
+  # Minutes between alert level escalations
+  escalation_interval_minutes: 10
+
+server:
+  host: "0.0.0.0"
+  port: 8000
