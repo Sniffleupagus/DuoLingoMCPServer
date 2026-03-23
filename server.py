@@ -154,6 +154,36 @@ def check_life_tasks_gate() -> dict:
     }
 
 
+@mcp.tool()
+def debug_raw_duolingo_data() -> dict:
+    """Dump raw Duolingo API responses for debugging.
+
+    Returns both the v1 user data and v2 endpoint data
+    with all available fields. Use this to discover what
+    data is available (quests, challenges, etc).
+    """
+    client = get_client()
+    v1_data = client.get_raw_user_data()
+    v2_data = client.get_raw_user_data_v2()
+
+    # Return just the top-level keys from v1 (it's huge),
+    # and full v2 data
+    return {
+        "v1_keys": sorted(v1_data.keys()),
+        "v1_sample_fields": {
+            k: v1_data.get(k)
+            for k in [
+                "daily_goal", "site_streak", "streak_extended_today",
+                "practiceReminderSettings", "achievements",
+                "challengeStatus", "questStatus", "dailyChallenge",
+            ]
+            if v1_data.get(k) is not None
+        },
+        "v2_data": v2_data,
+        "checked_at": datetime.now().isoformat(),
+    }
+
+
 if __name__ == "__main__":
     api_key = server_config.get("api_key")
     if api_key:

@@ -37,9 +37,9 @@ class DuolingoClient:
             timeout=15.0,
         )
 
-    def _get_user_data(self) -> dict:
-        """Fetch the main user data blob (cached per instance)."""
-        if self._user_data is not None:
+    def _get_user_data(self, force_refresh: bool = False) -> dict:
+        """Fetch the main user data blob (cached per instance unless forced)."""
+        if self._user_data is not None and not force_refresh:
             return self._user_data
 
         resp = self._client.get(f"{self.BASE_URL}/users/{self.username}")
@@ -47,6 +47,26 @@ class DuolingoClient:
         self._user_data = resp.json()
         self.user_id = str(self._user_data.get("id", ""))
         return self._user_data
+
+    def get_raw_user_data(self) -> dict:
+        """Dump the full raw user data blob for debugging."""
+        return self._get_user_data(force_refresh=True)
+
+    def get_raw_user_data_v2(self, fields: list[str] | None = None) -> dict:
+        """Dump the v2 endpoint response. If no fields specified, tries common ones."""
+        if fields is None:
+            fields = [
+                "xpGoal", "xpGains", "streakData",
+                "achievements", "currentCourse", "courses",
+                "trackingProperties", "globalAmbassadorStatus",
+                "weeklyXp", "monthlyXp", "totalXp",
+                "practiceReminderSettings", "health",
+                "gemsConfig", "lingots", "gems",
+                "currentCourseId", "streak",
+                "challengeStatus", "questStatus",
+                "dailyChallenge", "shopItems",
+            ]
+        return self._get_user_data_v2(fields)
 
     def _get_user_data_v2(self, fields: list[str]) -> dict:
         """Fetch from the versioned endpoint with specific fields."""
