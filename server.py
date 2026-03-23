@@ -10,7 +10,6 @@ from datetime import datetime
 from pathlib import Path
 from starlette.requests import Request
 from starlette.responses import JSONResponse
-from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.types import ASGIApp, Receive, Scope, Send
 from mcp.server.fastmcp import FastMCP
 
@@ -58,6 +57,7 @@ class BearerAuthMiddleware:
 
 mcp = FastMCP(
     "duolingo-state",
+    host="0.0.0.0",
     instructions="Duolingo streak and XP status for life-tasks gating",
 )
 
@@ -159,13 +159,13 @@ if __name__ == "__main__":
     if api_key:
         app = mcp.sse_app()
         app.add_middleware(BearerAuthMiddleware, api_key=api_key)
-        app.add_middleware(TrustedHostMiddleware, allowed_hosts=["*"])
 
         import uvicorn
         uvicorn.run(
             app,
             host=server_config.get("host", "0.0.0.0"),
             port=server_config.get("port", 8000),
+            forwarded_allow_ips="*",
         )
     else:
         # No auth — local dev only
