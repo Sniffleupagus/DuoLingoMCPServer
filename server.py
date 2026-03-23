@@ -38,15 +38,20 @@ class BearerAuthMiddleware:
     async def __call__(self, scope: Scope, receive: Receive, send: Send):
         if scope["type"] == "http":
             request = Request(scope)
-            auth = request.headers.get("authorization", "")
-            if not auth.startswith("Bearer ") or not secrets.compare_digest(
-                auth[7:], self.api_key
-            ):
-                response = JSONResponse(
-                    {"error": "unauthorized"}, status_code=401
-                )
-                await response(scope, receive, send)
-                return
+            # Allow SSE GET without auth — EventSource can't send custom headers.
+            # Auth is enforced on POST /messages/ where tool calls actually happen.
+            path = request.url.path
+            method = request.method
+            if not (method == "GET" and path == "/sse"):
+                auth = request.headers.get("authorization", "")
+                if not auth.startswith("Bearer ") or not secrets.compare_digest(
+                    auth[7:], self.api_key
+                ):
+                    response = JSONResponse(
+                        {"error": "unauthorized"}, status_code=401
+                    )
+                    await response(scope, receive, send)
+                    return
         await self.app(scope, receive, send)
 
 
