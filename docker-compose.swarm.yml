@@ -1,0 +1,67 @@
+# ---------------------------------------------------------------------------
+# Docker Swarm Compose File — deploy with:
+#   docker stack deploy -c docker-compose.swarm.yml duolingo
+#
+# This file is used INSTEAD OF docker-compose.yml when deploying to Swarm.
+# Swarm encrypts secrets in its Raft log and mounts them into containers
+# as in-memory files at /run/secrets/<name> (never written to disk).
+#
+# Before deploying, create your secrets (one-time setup):
+#   echo "your_jwt_here"   | docker secret create duolingo_jwt -
+#   echo "your_username"   | docker secret create duolingo_username -
+#   echo "your_api_key"    | docker secret create duolingo_api_key -
+#
+# Or use the helper script:  ./setup-secrets.sh
+#
+# To update a secret later, you must remove and recreate it:
+#   docker secret rm duolingo_jwt
+#   echo "new_jwt" | docker secret create duolingo_jwt -
+#   docker service update --secret-rm duolingo_jwt --secret-add duolingo_jwt duolingo_duolingo-mcp
+# ---------------------------------------------------------------------------
+
+services:
+  duolingo-mcp:
+    image: duolingo-mcp:latest
+    # NOTE: Swarm doesn't support `build:` — build the image first:
+    #   docker build -t duolingo-mcp:latest .
+    ports:
+      - "8000:8000"
+    volumes:
+      # config.yaml still provides non-secret settings (enforcement hours,
+      # server host/port). Secret fields in it are ignored when Swarm
+      # secrets are present — see server.py load_config().
+      - ./config.yaml:/app/config.yaml:ro
+
+    # --- Swarm Secrets ---
+    # This tells Swarm which secrets this service is allowed to access.
+    # Each secret listed here becomes a file at /run/secrets/<name> inside
+    # the container.  The files live on a tmpfs (RAM) — never on disk.
+    environment:
+      - TZ=America/Los_Angeles
+
+    secrets:
+      - duolingo_jwt        # -> /run/secrets/duolingo_jwt
+      - duolingo_username    # -> /run/secrets/duolingo_username
+      - duolingo_api_key     # -> /run/secrets/duolingo_api_key
+
+    deploy:
+      # Swarm-specific deployment settings (ignored by docker compose)
+      restart_policy:
+        condition: any
+
+# --- Top-level secrets declaration ---
+# This tells Swarm where each secret comes from.
+# "external: true" means the secret was already created with
+# `docker secret create` — Swarm won't try to create it for you.
+#
+# To adapt to another project:
+#   1. Add a new entry here for each secret your app needs
+#   2. Grant access under services.<your-svc>.secrets above
+#   3. Read it in your app from /run/secrets/<name>
+secrets:
+  duolingo_jwt:
+    external: true
+  duolingo_username:
+    external: true
+  duolingo_api_key:
+    external: true

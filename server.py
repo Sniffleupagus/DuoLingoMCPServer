@@ -16,10 +16,82 @@ from mcp.server.fastmcp import FastMCP
 from duolingo_client import DuolingoClient
 
 
+# ---------------------------------------------------------------------------
+# Docker Swarm Secrets Integration
+# ---------------------------------------------------------------------------
+# When running under Docker Swarm (`docker stack deploy`), secrets created
+# with `docker secret create <name> -` are encrypted in the Swarm Raft log
+# and mounted into the container as plain-text files *in a tmpfs* (RAM-only)
+# at /run/secrets/<name>.  They never touch disk inside the container.
+#
+# To adapt this pattern to another project:
+#   1. Identify every secret value your app needs.
+#   2. Create each one:  echo "value" | docker secret create my_secret -
+#   3. Reference them in your compose file under the top-level `secrets:` key
+#      and grant access to the service under `services.<svc>.secrets:`.
+#   4. In your app, read from /run/secrets/<name> (see read_secret() below).
+#   5. Deploy with: docker stack deploy -c docker-compose.swarm.yml <stack>
+#
+# For local development (plain `docker compose up` or running outside Docker
+# entirely), the secrets files won't exist, so we fall back to config.yaml.
+# ---------------------------------------------------------------------------
+
+# The directory where Docker Swarm mounts decrypted secrets (in-memory tmpfs).
+SECRETS_DIR = Path("/run/secrets")
+
+
+def read_secret(name: str) -> str | None:
+    """Read a single Docker Swarm secret by name.
+
+    Docker Swarm mounts each secret as a file at /run/secrets/<name>.
+    The file contains the raw secret value (often with a trailing newline,
+    so we strip() it).  Returns None if the file doesn't exist — which
+    means we're not running under Swarm and should fall back to config.yaml.
+
+    To use this in another project, just call:
+        value = read_secret("my_secret_name")
+    The name must match what you passed to `docker secret create`.
+    """
+    secret_path = SECRETS_DIR / name
+    if secret_path.exists():
+        return secret_path.read_text().strip()
+    return None
+
+
 def load_config() -> dict:
+    """Load configuration, preferring Docker Swarm secrets over config.yaml.
+
+    Resolution order for each secret value:
+      1. /run/secrets/<name>  — used when deployed via `docker stack deploy`
+         (encrypted at rest in Swarm's Raft log, decrypted into RAM only)
+      2. config.yaml          — used for local dev / plain docker-compose
+
+    The non-secret settings (enforcement windows, server host/port) always
+    come from config.yaml since they're not sensitive.
+    """
+    # --- Load the base config file (always needed for non-secret settings) ---
     config_path = Path(__file__).parent / "config.yaml"
     with open(config_path) as f:
-        return yaml.safe_load(f)
+        config = yaml.safe_load(f)
+
+    # --- Override secret values with Docker Swarm secrets if available ---
+    # Each read_secret() call checks /run/secrets/<name>.
+    # If we're running under Swarm, these files exist and take priority.
+    # If not (local dev), they return None and we keep the config.yaml values.
+
+    jwt = read_secret("duolingo_jwt")          # docker secret create duolingo_jwt -
+    if jwt:
+        config["duolingo"]["jwt_token"] = jwt
+
+    username = read_secret("duolingo_username") # docker secret create duolingo_username -
+    if username:
+        config["duolingo"]["username"] = username
+
+    api_key = read_secret("duolingo_api_key")   # docker secret create duolingo_api_key -
+    if api_key:
+        config.setdefault("server", {})["api_key"] = api_key
+
+    return config
 
 
 CONFIG = load_config()

@@ -94,16 +94,13 @@ class DuolingoClient:
         """Get today's XP progress: xp_goal, xp_today, lessons_today count."""
         data = self._get_user_data_v2(["xpGoal", "xpGains", "streakData"])
 
-        # Calculate today's cutoff timestamp
-        streak_data = data.get("streakData", {})
-        reported_ts = streak_data.get("updatedTimestamp", 0)
-        reported_midnight = datetime.fromtimestamp(reported_ts)
-        midnight = datetime.fromordinal(datetime.today().date().toordinal())
-        time_discrepancy = min(midnight - reported_midnight, timedelta(0))
-        update_cutoff = round((reported_midnight + time_discrepancy).timestamp())
+        # Only count lessons from after midnight today (local time).
+        # The container must have TZ set correctly for this to work.
+        midnight = datetime.combine(datetime.today().date(), datetime.min.time())
+        cutoff_ts = round(midnight.timestamp())
 
         xp_gains = data.get("xpGains", [])
-        lessons_today = [l for l in xp_gains if l.get("time", 0) > update_cutoff]
+        lessons_today = [l for l in xp_gains if l.get("time", 0) >= cutoff_ts]
 
         return {
             "xp_goal": data.get("xpGoal", 0),
