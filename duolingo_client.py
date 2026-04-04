@@ -83,7 +83,7 @@ class DuolingoClient:
 
     def get_streak_info(self) -> dict:
         """Get streak status: daily_goal, site_streak, streak_extended_today."""
-        data = self._get_user_data()
+        data = self._get_user_data(force_refresh=True)
         return {
             "daily_goal": data.get("daily_goal", 0),
             "site_streak": data.get("site_streak", 0),
