@@ -173,7 +173,7 @@ def get_alert_level() -> int:
 
 @mcp.tool()
 def check_duolingo_status() -> dict:
-    """Check Brian's current Duolingo status.
+    """This tool gets Brian's current Duolingo status.
 
     Returns streak info, daily XP progress, whether the streak
     has been extended today, and whether the daily goal is met.
@@ -188,7 +188,7 @@ def check_duolingo_status() -> dict:
 
 @mcp.tool()
 def check_life_tasks_gate() -> dict:
-    """Check if Brian's life tasks are satisfied before allowing work.
+    """This tool tells if Brian's life tasks are satisfied before allowing work.
 
     This is the enforcement gate. Returns whether obligations are met
     and the current alert level. Claude should follow the escalation
@@ -228,7 +228,7 @@ def check_life_tasks_gate() -> dict:
 
 @mcp.tool()
 def debug_raw_duolingo_data() -> dict:
-    """Dump raw Duolingo API responses for debugging.
+    """Do not use unless asked. Dump raw Duolingo API responses for debugging.
 
     Returns both the v1 user data and v2 endpoint data
     with all available fields. Use this to discover what

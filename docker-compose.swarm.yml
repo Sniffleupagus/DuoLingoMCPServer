@@ -46,6 +46,10 @@ services:
 
     deploy:
       # Swarm-specific deployment settings (ignored by docker compose)
+      replicas: 1
+      update_config:
+        parallelism: 1
+        order: stop-first
       restart_policy:
         condition: any
 
